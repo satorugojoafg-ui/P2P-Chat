@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-p2p_chat}
+      POSTGRES_USER: ${POSTGRES_USER:-p2p_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_pg_password}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-p2p_user} -d ${POSTGRES_DB:-p2p_chat}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      FLASK_ENV: ${FLASK_ENV:-production}
+      P2P_SECRET_KEY: ${P2P_SECRET_KEY:?P2P_SECRET_KEY must be set in environment or .env}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://p2p_user:change_me_pg_password@db:5432/p2p_chat}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      P2P_DB_PATH: ${P2P_DB_PATH:-/app/data/p2p_chat.db}
+      P2P_UPLOAD_DIR: ${P2P_UPLOAD_DIR:-/app/uploads}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8000:8000"
+    volumes:
+      - api_data:/app/data
+      - api_uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  pg_data:
+  redis_data:
+  api_data:
+  api_uploads:

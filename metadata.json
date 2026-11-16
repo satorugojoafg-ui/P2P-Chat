@@ -1,0 +1,6 @@
+{
+  "name": "P2P CHAT",
+  "description": "Futuristic bilingual peer-to-peer messaging app with Flask REST backend and WebRTC DataChannel media transfer.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
